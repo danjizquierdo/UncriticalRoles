@@ -5,6 +5,7 @@ from datetime import date, timedelta
 import re
 import logging
 from sys import argv
+import string
 import re
 import nltk
 from nltk import word_tokenize, FreqDist
@@ -18,6 +19,7 @@ from collections import Counter
 import numpy as np
 import urllib
 import requests
+import jsonlines
 
 
 logging.basicConfig(filename='errors.log', filemode='a+', format='%(asctime)s: %(message)s', level=logging.ERROR)
@@ -40,10 +42,10 @@ def process_tweet(tweet):
     Returns:
         stopwords_removed (list): list of all words in tweet, not including stopwords
     """
-    stopwords_list = stopwords.words('english') + set(string.punctuation)
+    stopwords_list = stopwords.words('english')
     stopwords_list += ["'",'"','...','``','…','’','‘','“',"''",'""','”','”','co',
                        "'s'",'\'s','n\'t','\'m','\'re','amp','https']
-    tokens = nltk.word_tokenize(tweet)
+    tokens = nltk.word_tokenize(tweet.translate(str.maketrans(dict.fromkeys(string.punctuation))))
     stopwords_removed = [lemmatizer.lemmatize(token).lower() for token in tokens if token not in stopwords_list]
     return stopwords_removed
 
@@ -148,8 +150,9 @@ def listen(terms, amount):
                     logging.error(f'Error on status_to_dict[User]: {e}\nFailed tweet: {tweet._json}\n')
                     tweet_['user'] = None
                 else:
-                    with open(f'{today.isoformat()}-users.json', 'a+') as u:
-                        json.dump(user_, u, default=myconverter)
+                    with jsonlines.open(f'{today.isoformat()}-users.json',
+                                        mode='a') as writer:
+                        writer.write(user_)
                 try:
                     tweet_ = dict()
                     tweet_['timestamp'] = tweet.created_at.timestamp()
@@ -164,8 +167,9 @@ def listen(terms, amount):
                     print(e)
                     logging.error(f'Error on status_to_dict[Tweet]: {e}\nFailed tweet: {tweet._json}\n')
                 else:
-                    with open(f'{today.isoformat()}-tweets.json', 'a+') as t:
-                        json.dump(tweet_, t, default=myconverter)
+                    with jsonlines.open(f'{today.isoformat()}-tweets.json',
+                                        mode='a') as writer:
+                        writer.write(tweet_)
         print(f'Done listening for {term}!')
 
 
